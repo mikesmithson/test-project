@@ -14,24 +14,21 @@ plugins {
 	id "de.undercouch.download" version "4.0.4"
 }
 
+version = '1.0.0'
 group = 'com.ford.pe.api.onboarding.build.cache'
-version = '0.0.0-SNAPSHOT'
 
 ext {
 	buildCacheArchiveName = "${project.name}-build-cache.zip"
 	buildCacheDir = 'build-cache'
-	nexusCacheDir = 'http://localhost:8081/repository/maven-snapshots'
+	nexusBuildCache = 'http://localhost:8081/repository/build-cache'
 }
 
 repositories {
 	jcenter()
 	maven {
-		url nexusCacheDir
+		url nexusBuildCache
 		metadataSources {
 			artifact()
-		}
-		mavenContent {
-			snapshotsOnly()
 		}
 	}
 }
@@ -45,7 +42,7 @@ dependencies {
 	implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
 	testImplementation 'org.jetbrains.kotlin:kotlin-test'
 	testImplementation 'org.jetbrains.kotlin:kotlin-test-junit'
-	buildcache 'com.ford.pe.api.onboarding.build.cache:test-project:0.0.0-SNAPSHOT'
+	buildcache 'com.ford.pe.api.onboarding.build.cache:test-project:latest'
 }
 
 task archiveBuildCache(type: Zip) {
@@ -60,13 +57,15 @@ task archiveBuildCache(type: Zip) {
 	}
 }
 
-task fetchRemoteBuildCache(type: Download) {
-	src 'http://localhost:8081/repository/maven-snapshots/com/ford/pe/api/onboarding/build/cache/test-project/0.0.0-SNAPSHOT/test-project-0.0.0-20200405.005415-1.zip'
-	dest new File(buildCacheDir, 'build-cache-downloaded.zipz')
+task fetchRemoteBuildCache(type: Copy) {
+	from configurations.buildcache {
+		include '*.zip'
+	}
+	into buildCacheDir
 }
 
 task extractBuildCacheArchive(type: Copy) {
-	from zipTree(fetchRemoteBuildCache.dest)
+	from zipTree("$buildCacheDir/$buildCacheArchiveName")
 	into project.rootDir
 }
 
@@ -78,7 +77,7 @@ publishing {
 	}
 	repositories {
 		maven {
-			url = nexusCacheDir
+			url = nexusBuildCache
 			credentials(PasswordCredentials) {
 				username 'admin'
 				password '9e20739f-193a-42a6-8d61-7146dcc20cd6'
