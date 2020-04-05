@@ -1,0 +1,88 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'org.apache.ivy:ivy:2.3.0'
+	}
+}
+
+plugins {
+	id 'org.jetbrains.kotlin.jvm' version '1.3.70'
+	id 'java-library'
+	id 'maven-publish'
+	id "de.undercouch.download" version "4.0.4"
+}
+
+group = 'com.ford.pe.api.onboarding.build.cache'
+version = '0.0.0-SNAPSHOT'
+
+ext {
+	buildCacheArchiveName = "${project.name}-build-cache.zip"
+	buildCacheDir = 'build-cache'
+	nexusCacheDir = 'http://localhost:8081/repository/maven-snapshots'
+}
+
+repositories {
+	jcenter()
+	maven {
+		url nexusCacheDir
+		metadataSources {
+			artifact()
+		}
+		mavenContent {
+			snapshotsOnly()
+		}
+	}
+}
+
+configurations {
+	buildcache
+}
+
+dependencies {
+	implementation platform('org.jetbrains.kotlin:kotlin-bom')
+	implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+	testImplementation 'org.jetbrains.kotlin:kotlin-test'
+	testImplementation 'org.jetbrains.kotlin:kotlin-test-junit'
+	buildcache 'com.ford.pe.api.onboarding.build.cache:test-project:0.0.0-SNAPSHOT'
+}
+
+task archiveBuildCache(type: Zip) {
+	archiveFileName = "$buildCacheArchiveName"
+	destinationDirectory = file("$rootDir/$buildCacheDir")
+	from('.gradle') {
+		into '.gradle'
+	}
+
+	from(project.buildDir) {
+		into 'build'
+	}
+}
+
+task fetchRemoteBuildCache(type: Download) {
+	src 'http://localhost:8081/repository/maven-snapshots/com/ford/pe/api/onboarding/build/cache/test-project/0.0.0-SNAPSHOT/test-project-0.0.0-20200405.005415-1.zip'
+	dest new File(buildCacheDir, 'build-cache-downloaded.zipz')
+}
+
+task extractBuildCacheArchive(type: Copy) {
+	from zipTree(fetchRemoteBuildCache.dest)
+	into project.rootDir
+}
+
+publishing {
+	publications {
+		maven(MavenPublication) {
+			artifact archiveBuildCache
+		}
+	}
+	repositories {
+		maven {
+			url = nexusCacheDir
+			credentials(PasswordCredentials) {
+				username 'admin'
+				password '9e20739f-193a-42a6-8d61-7146dcc20cd6'
+			}
+		}
+	}
+}
